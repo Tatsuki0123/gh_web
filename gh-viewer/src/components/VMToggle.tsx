@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Power, Box, Download, Trash2 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:3001/api';
+// Use environment variable for API_BASE if available, otherwise fallback to localhost
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 
 export default function VMToggle() {
   const [isRunning, setIsRunning] = useState(false);
