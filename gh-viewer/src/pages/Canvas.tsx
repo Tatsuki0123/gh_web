@@ -18,6 +18,7 @@ import 'reactflow/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
 import { Play } from 'lucide-react';
 import GeometryViewer from '../components/GeometryViewer';
+import VMToggle from '../components/VMToggle';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
@@ -96,15 +97,15 @@ export default function Canvas() {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
 
-        const objects = xmlDoc.querySelectorAll('chunk[name="Definition"] > chunks > chunk[name="Object"], chunk[name="Object"]');
+        const objects = xmlDoc.querySelectorAll('chunk[name="Object"]');
 
         const newNodes: Node[] = [];
         const newEdges: Edge[] = [];
 
         const getChildItemText = (parent: Element, name: string) => {
-            const item = Array.from(parent.querySelectorAll(`items > item[name="${name}"]`))
-                            .find(el => el.parentElement?.parentElement === parent);
-            return item?.textContent;
+            const items = Array.from(parent.querySelectorAll(`item[name="${name}"]`));
+            const direct = items.find(el => el.closest('chunk') === parent);
+            return (direct || items[0])?.textContent;
         };
 
         const extractParams = (chunk: Element) => {
@@ -125,7 +126,7 @@ export default function Canvas() {
             const guid = getChildItemText(obj, "InstanceGuid") || uuidv4();
 
             if (name === "Wire") {
-                 const wireData = Array.from(obj.querySelectorAll('chunk[name="WireData"]')).find(el => el.parentElement?.parentElement === obj);
+                 const wireData = Array.from(obj.querySelectorAll('chunk[name="WireData"]')).find(el => el.closest('chunk') === obj);
                  if (wireData) {
                       const source = getChildItemText(wireData, "Source");
                       const target = getChildItemText(wireData, "Target");
@@ -145,13 +146,10 @@ export default function Canvas() {
             let x = Math.random() * 500;
             let y = Math.random() * 500;
 
-            let boundsItem = Array.from(obj.querySelectorAll('items > item[name="Bounds"]')).find(el => el.parentElement?.parentElement === obj);
-            if (!boundsItem) {
-                const attrs = Array.from(obj.querySelectorAll('chunk[name="Attributes"]')).find(el => el.parentElement?.parentElement === obj);
-                if (attrs) {
-                    boundsItem = Array.from(attrs.querySelectorAll('items > item[name="Bounds"]')).find(el => el.parentElement?.parentElement === attrs);
-                }
-            }
+            let boundsItem = Array.from(obj.querySelectorAll('item[name="Bounds"]')).find(el => {
+                const parentChunk = el.closest('chunk');
+                return parentChunk === obj || parentChunk?.getAttribute('name') === 'Attributes';
+            });
 
             if (boundsItem) {
               const xNode = boundsItem.querySelector('X');
@@ -216,13 +214,18 @@ export default function Canvas() {
             />
           </div>
         </div>
-        <button
-          onClick={runCompute}
-          className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-colors cursor-pointer"
-        >
-          <Play size={18} />
-          Run
-        </button>
+
+        <div className="flex items-center gap-4">
+          <VMToggle />
+          <div className="h-8 w-px bg-gray-300"></div>
+          <button
+            onClick={runCompute}
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-colors cursor-pointer"
+          >
+            <Play size={18} />
+            Run
+          </button>
+        </div>
       </header>
 
       <div className="absolute inset-0 bg-gray-50 -z-10">
