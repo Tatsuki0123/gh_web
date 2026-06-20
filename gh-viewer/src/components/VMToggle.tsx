@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Power, Box, Download, Trash2 } from 'lucide-react';
+import { Power, Box, Download, Trash2, Settings } from 'lucide-react';
 
 // Use environment variable for API_BASE if available, otherwise fallback to localhost
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
@@ -16,17 +16,36 @@ export default function VMToggle() {
     fetchPackages();
   }, []);
 
+  const [computeUrl, setComputeUrl] = useState('http://localhost:8081/');
+  const [showSettings, setShowSettings] = useState(false);
+
   const fetchStatus = async () => {
     try {
         const res = await fetch(`${API_BASE}/vm/status`);
         const data = await res.json();
         setIsRunning(data.isRunning);
         setIp(data.ip);
+        if (data.computeUrl) {
+            setComputeUrl(data.computeUrl);
+        }
     } catch (e) {
         console.error(e);
     } finally {
         setLoading(false);
     }
+  };
+
+  const saveComputeUrl = async () => {
+      try {
+          await fetch(`${API_BASE}/vm/config`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ computeUrl })
+          });
+          setShowSettings(false);
+      } catch (e) {
+          console.error(e);
+      }
   };
 
   const fetchPackages = async () => {
@@ -103,6 +122,43 @@ export default function VMToggle() {
            <Power size={18} className={isRunning ? 'text-green-600' : 'text-gray-500'} />
            {loading ? 'Wait...' : isRunning ? 'VM Running' : 'VM Off'}
        </button>
+
+       <button
+           onClick={() => setShowSettings(!showSettings)}
+           className="bg-gray-50 text-gray-600 hover:bg-gray-200 p-2 rounded-full transition-colors flex items-center justify-center shadow-sm"
+           title="Compute Settings"
+       >
+           <Settings size={20} />
+       </button>
+
+       {showSettings && (
+           <div className="absolute top-12 right-0 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden text-left p-4">
+               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                   <Settings size={18} /> Compute Connection
+               </h3>
+               <div className="space-y-3">
+                   <div>
+                       <label className="block text-xs font-medium text-gray-500 mb-1">Rhino Compute URL</label>
+                       <input
+                           type="text"
+                           value={computeUrl}
+                           onChange={(e) => setComputeUrl(e.target.value)}
+                           className="w-full text-sm p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                           placeholder="http://localhost:8081/"
+                       />
+                   </div>
+                   <button
+                       onClick={saveComputeUrl}
+                       className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors text-sm"
+                   >
+                       Save & Connect
+                   </button>
+                   <p className="text-xs text-gray-400 mt-2">
+                       Note: A valid Rhino Compute token/license may be required on your server.
+                   </p>
+               </div>
+           </div>
+       )}
 
        {showPackages && isRunning && (
            <div className="absolute top-12 right-0 w-80 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden text-left">

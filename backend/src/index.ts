@@ -10,11 +10,20 @@ app.use(express.json());
 // Fake state for VM
 let vmState = {
     isRunning: false,
-    ip: null as string | null
+    ip: null as string | null,
+    computeUrl: 'http://localhost:8081/'
 };
 
 // Fake package store
 let installedPackages: any[] = [];
+
+app.post('/api/vm/config', (req: Request, res: Response) => {
+    const { computeUrl } = req.body;
+    if (computeUrl) {
+        vmState.computeUrl = computeUrl;
+    }
+    res.json(vmState);
+});
 
 app.get('/api/vm/status', (req: Request, res: Response) => {
     res.json(vmState);

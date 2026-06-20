@@ -19,6 +19,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Play } from 'lucide-react';
 import GeometryViewer from '../components/GeometryViewer';
 import VMToggle from '../components/VMToggle';
+import { fetchDefinition } from '../compute';
 
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
@@ -195,9 +196,36 @@ export default function Canvas() {
     }
   };
 
-  const runCompute = () => {
-    alert("Triggering Rhino Compute evaluation...");
-    setShowGeometry(true);
+  const [computeError, setComputeError] = useState<string | null>(null);
+
+  const runCompute = async () => {
+    if (!fileContent) {
+        alert("Please upload a file first.");
+        return;
+    }
+
+    // In a real application, we'd fetch the user's specific VM URL from the backend
+    // Since the backend manages the mocked VM State, we will attempt to connect
+    // to whatever URL is configured there (defaulting to localhost:8081).
+    setComputeError(null);
+    try {
+        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/vm/status`);
+        const status = await res.json();
+
+        const computeUrl = status.computeUrl || 'http://localhost:8081/';
+        console.log("Connecting to compute server:", computeUrl);
+
+        // This will attempt a real connection to the compute server
+        await fetchDefinition(fileContent, computeUrl);
+
+        alert(`Successfully connected to Rhino Compute at ${computeUrl}`);
+        setShowGeometry(true);
+    } catch (e: any) {
+        console.error("Compute error", e);
+        setComputeError(`Failed to evaluate via Rhino Compute: ${e.message}. Ensure your Compute server is running and CORS is configured.`);
+        // For demonstration, we still show geometry to let user play with UI
+        setShowGeometry(true);
+    }
   };
 
   return (
@@ -227,6 +255,16 @@ export default function Canvas() {
           </button>
         </div>
       </header>
+
+      {computeError && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative max-w-2xl text-sm shadow-md" role="alert">
+             <strong className="font-bold">Compute Error! </strong>
+             <span className="block sm:inline">{computeError}</span>
+             <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setComputeError(null)}>
+                 <svg className="fill-current h-6 w-6 text-red-500 cursor-pointer" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+             </span>
+          </div>
+      )}
 
       <div className="absolute inset-0 bg-gray-50 -z-10">
         <ReactFlow
